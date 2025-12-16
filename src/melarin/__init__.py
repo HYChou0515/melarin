@@ -26,6 +26,11 @@ def enc_hook(obj):
         encoded = t.encode(obj)
         if encoded is not NotImplemented:
             return msgpack.ExtType(t.TYPECODE, encoded)
+    for check, t in IType._checks:
+        if check(obj):
+            encoded = t.encode(obj)
+            if encoded is not NotImplemented:
+                return msgpack.ExtType(t.TYPECODE, encoded)
     for t in IType._fallbacks:
         encoded = t.encode(obj)
         if encoded is not NotImplemented:

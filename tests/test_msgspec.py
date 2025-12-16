@@ -19,7 +19,15 @@ def test_numpy():
     import melarin
     import numpy as np
 
-    msg = np.arange(10)
+    msg = {
+        "a": np.arange(10),
+        "b": np.float128(1.5),
+        "c": np.uint8(7),
+        "d": 123.4,
+        "e": np.array([[1, 2, 3], [4, 5, 6], ["7", "8", "9"]]),
+    }
     buf = melarin.enc(msg)
     msg2 = melarin.dec(buf)
-    assert all(msg == msg2)
+
+    for key in msg:
+        assert np.all(msg[key] == msg2[key])
