@@ -21,10 +21,12 @@ build-backend = "hatchling.build"
 [dependency-groups]
 dev = [
     "coverage>=7.10.7",
+    "fastparquet>=2024.11.0",
     "ipython>=8.18.1",
     "numpy>=2.0.2",
     "pandas>=2.3.3",
     "pillow>=11.3.0",
+    "pyarrow>=21.0.0",
     "pytest>=8.4.2",
     "ruff>=0.14.9",
 ]

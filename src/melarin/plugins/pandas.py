@@ -1,33 +1,32 @@
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Collection
+from collections.abc import Callable
 import io
 import struct
 from typing import Any
-import numpy as np
+
+import pandas as pd
 
 from melarin.base import ISubType, subclass_init_register
 
 
-class NumpyType(ISubType, ABC):
+class PandasType(ISubType, ABC):
     # 自動註冊subclasses
     def __init_subclass__(cls) -> None:
         super().__init_subclass__()
-        subclass_init_register(NumpyType, cls)
+        subclass_init_register(PandasType, cls)
 
-    _code_map: dict[int, type["NumpyType"]] = {}
-    _type_map: dict[type, type["NumpyType"]] = {}
-    _fallbacks: list[type["NumpyType"]] = []
-    _checks: list[tuple[Callable[[Any], bool], type["NumpyType"]]] = []
+    _code_map: dict[int, type["PandasType"]] = {}
+    _type_map: dict[type, type["PandasType"]] = {}
+    _fallbacks: list[type["PandasType"]] = []
+    _checks: list[tuple[Callable[[Any], bool], type["PandasType"]]] = []
 
-    TYPECODE: int = 1
-    FALLBACK: bool = False
+    TYPECODE: int = 2
+    FALLBACK: bool = True
 
     @classmethod
+    @abstractmethod
     def raw_encode(cls, obj: Any) -> bytes:
-        bio = io.BytesIO()
-        np.save(bio, obj, allow_pickle=False)
-        bio.seek(0)
-        return bio.read()
+        pass
 
     @classmethod
     @abstractmethod
@@ -62,32 +61,39 @@ class NumpyType(ISubType, ABC):
         raise ValueError(f"Unknown subcode: {subcode}")
 
 
-class ScalarType(NumpyType):
+class ParquetFrameType(PandasType):
     SUBCODE = 0
-    TYPES: Collection[type] = {np.generic}
+    TYPES = {pd.DataFrame}
 
     @classmethod
-    def CHECK(cls, obj: Any) -> bool:
-        return isinstance(obj, np.generic)
+    def raw_encode(cls, obj: Any) -> bytes:
+        try:
+            bio = io.BytesIO()
+            obj.to_parquet(bio)
+            return bio.getvalue()
+        except ImportError:
+            return NotImplemented
 
     @classmethod
     def raw_decode(cls, data: bytes) -> Any:
-        bio = io.BytesIO(data)
-        bio.seek(0)
-        arr = np.load(bio, allow_pickle=False)
-        return arr.dtype.type(arr)
+        return pd.read_parquet(io.BytesIO(data))
 
 
-class ArrayType(NumpyType):
+class ParquetSeriesType(PandasType):
     SUBCODE = 1
-    TYPES: Collection[type] = {np.ndarray}
+    TYPES = {pd.Series}
 
     @classmethod
-    def CHECK(cls, obj: Any) -> bool:
-        return isinstance(obj, np.ndarray)
+    def raw_encode(cls, obj: Any) -> bytes:
+        try:
+            bio = io.BytesIO()
+            obj.to_frame().to_parquet(bio)
+            return bio.getvalue()
+        except ImportError:
+            return NotImplemented
 
     @classmethod
     def raw_decode(cls, data: bytes) -> Any:
-        bio = io.BytesIO(data)
-        bio.seek(0)
-        return np.load(bio, allow_pickle=False)
+        df = pd.read_parquet(io.BytesIO(data))
+        s = df[df.columns[0]]
+        return s

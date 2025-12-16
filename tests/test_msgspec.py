@@ -31,3 +31,24 @@ def test_numpy():
 
     for key in msg:
         assert np.all(msg[key] == msg2[key])
+
+
+def test_pandas():
+    import melarin
+    import pandas as pd
+    import numpy as np
+
+    msg = {
+        "a": pd.DataFrame(
+            np.arange(12).reshape(3, 4), columns=list("ABCD"), index=list("xyz")
+        ),
+        "c": pd.Series(np.arange(12), name="series"),
+    }
+    buf = melarin.enc(msg)
+    msg2 = melarin.dec(buf)
+
+    for key in msg:
+        if isinstance(msg[key], pd.Series):
+            pd.testing.assert_series_equal(msg[key], msg2[key])
+        else:
+            pd.testing.assert_frame_equal(msg[key], msg2[key])

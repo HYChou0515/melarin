@@ -15,6 +15,8 @@ class IType(ABC):
     # 自動註冊subclasses
     def __init_subclass__(cls) -> None:
         super().__init_subclass__()
+        if cls.__name__ == "ISubType":
+            return
         if cls.TYPECODE in cls._code_map:
             logger.warning(f"TYPECODE {cls.TYPECODE} already registered")
             logger.warning(f"Overriding {cls._code_map[cls.TYPECODE]} with {cls}")
@@ -49,3 +51,21 @@ class IType(ABC):
     @abstractmethod
     def decode(cls, data: bytes) -> Any:
         pass
+
+
+class ISubType(IType, ABC):
+    SUBCODE: int
+    TYPES: Collection[type] = {}
+    CHECK: Callable[[Any], bool] | None = None
+
+
+def subclass_init_register(cls: type[IType], subcls: type[ISubType]) -> None:
+    cls._code_map[subcls.SUBCODE] = subcls
+    for t in subcls.TYPES:
+        cls._type_map[t] = subcls
+    if subcls.FALLBACK:
+        cls._fallbacks.append(subcls)
+    IType.register(subcls, subcls.TYPES)
+    if subcls.CHECK is not None:
+        cls._checks.append((subcls.CHECK, subcls))
+        IType.register_check(subcls, subcls.CHECK)
