@@ -13,3 +13,13 @@ def test_msgspec():
     buf = melarin.enc(msg)
     msg2 = melarin.dec(buf)
     assert msg == msg2
+
+
+def test_numpy():
+    import melarin
+    import numpy as np
+
+    msg = np.arange(10)
+    buf = melarin.enc(msg)
+    msg2 = melarin.dec(buf)
+    assert all(msg == msg2)

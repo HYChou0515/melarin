@@ -1,10 +1,17 @@
 import functools
 from melarin.base import IType
-from melarin.builtins import BuiltinType
 import msgpack
+import melarin.plugins
+import pkgutil
+import importlib
 
 
-types: list[type[IType]] = [BuiltinType]
+def load_all():
+    for m in pkgutil.iter_modules(melarin.plugins.__path__):
+        importlib.import_module(f"{melarin.plugins.__name__}.{m.name}")
+
+
+load_all()
 
 
 def dec_hook(code, data):
