@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 import io
+import json
 import struct
 from typing import Any
 
@@ -85,15 +86,32 @@ class ParquetSeriesType(PandasType):
 
     @classmethod
     def raw_encode(cls, obj: Any) -> bytes:
+        df = obj.to_frame()
         try:
             bio = io.BytesIO()
-            obj.to_frame().to_parquet(bio)
-            return bio.getvalue()
-        except ImportError:
-            return NotImplemented
+            df.to_parquet(bio)
+            name = json.dumps(obj.name).encode("utf-8")
+            return struct.pack("BI", 0, len(name)) + name + bio.getvalue()
+        except Exception:
+            bio = io.BytesIO()
+            df.to_json(bio)
+            name = json.dumps(obj.name).encode("utf-8")
+            return struct.pack("BI", 1, len(name)) + name + bio.getvalue()
 
     @classmethod
     def raw_decode(cls, data: bytes) -> Any:
-        df = pd.read_parquet(io.BytesIO(data))
-        s = df[df.columns[0]]
-        return s
+        isdf, name_len = struct.unpack("BI", data[:8])
+        isdf = isdf == 0
+        name = data[8 : 8 + name_len].decode("utf-8")
+        name = json.loads(name)
+        b = data[8 + name_len :]
+        if isdf:
+            df = pd.read_parquet(io.BytesIO(b))
+            s = df[df.columns[0]]
+            s.name = name
+            return s
+        else:
+            df = pd.read_json(io.BytesIO(b))
+            s = df[df.columns[0]]
+            s.name = name
+            return s

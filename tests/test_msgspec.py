@@ -37,12 +37,21 @@ def test_pandas():
     import melarin
     import pandas as pd
     import numpy as np
+    import datetime as dt
 
     msg = {
         "a": pd.DataFrame(
             np.arange(12).reshape(3, 4), columns=list("ABCD"), index=list("xyz")
         ),
-        "c": pd.Series(np.arange(12), name="series"),
+        "b": pd.Series(np.arange(12), name="series"),
+        "c": pd.Series(
+            [
+                np.arange(12),
+                [12, 2, 4],
+                {"key": "value"},
+            ]
+        ),
+        "d": pd.Series([dt.datetime(2024, 1, x) for x in range(1, 13)]),
     }
     buf = melarin.enc(msg)
     msg2 = melarin.dec(buf)
